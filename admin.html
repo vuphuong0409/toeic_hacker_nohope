@@ -285,13 +285,23 @@
         let users = [];
         let currentUser = null;
 
+        // Flag to prevent auth state changes during user creation
+        let isCreatingUser = false;
+        let authChecked = false;
+
         // Check if user is logged in and is admin
         function checkAuth() {
             onAuthStateChanged(auth, async (user) => {
+                // Skip if we're creating a user or already checked
+                if (isCreatingUser || authChecked) {
+                    return;
+                }
+                
                 if (!user) {
                     window.location.href = 'login.html';
                 } else {
                     currentUser = user;
+                    authChecked = true;
                     // Check if user is admin by checking Firestore
                     try {
                         const userDoc = await getDocs(query(collection(db, 'users'), where('email', '==', user.email)));
@@ -381,10 +391,14 @@
             }
 
             try {
+                // Set flag to prevent auth state changes
+                isCreatingUser = true;
+                
                 // Check if username already exists
                 const existingUser = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
                 if (!existingUser.empty) {
                     alert('Username đã tồn tại');
+                    isCreatingUser = false;
                     return;
                 }
 
@@ -392,6 +406,7 @@
                 const existingEmail = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
                 if (!existingEmail.empty) {
                     alert('Email đã tồn tại');
+                    isCreatingUser = false;
                     return;
                 }
 
@@ -414,9 +429,15 @@
                 loadUserList();
                 
                 alert('Đã thêm user thành công! User có thể đăng nhập ngay.');
+                
+                // Reset flag after a short delay
+                setTimeout(() => {
+                    isCreatingUser = false;
+                }, 1000);
             } catch (error) {
                 console.error('Error adding user:', error);
                 alert('Lỗi khi thêm user: ' + error.message);
+                isCreatingUser = false;
             }
         }
 
