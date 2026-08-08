@@ -164,6 +164,17 @@
                 }
                 
                 const userData = userDoc.docs[0].data();
+                
+                // Check if user is deleted
+                if (userData.isDeleted) {
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = 'Tài khoản này đã bị xóa';
+                    setTimeout(() => {
+                        errorMessage.style.display = 'none';
+                    }, 3000);
+                    return;
+                }
+                
                 const email = userData.email;
                 
                 // Sign in with Firebase using the email
@@ -194,6 +205,8 @@
                     return 'This account has been disabled.';
                 case 'auth/too-many-requests':
                     return 'Too many attempts. Please try again later.';
+                case 'auth/account-deleted':
+                    return 'Tài khoản này đã bị xóa.';
                 default:
                     return 'Login failed. Please try again.';
             }

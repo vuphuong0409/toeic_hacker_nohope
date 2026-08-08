@@ -348,6 +348,9 @@
                 });
 
                 users.forEach((user) => {
+                    // Skip deleted users
+                    if (user.isDeleted) return;
+                    
                     const userItem = document.createElement('div');
                     userItem.className = 'user-item';
                     userItem.innerHTML = `
@@ -415,7 +418,7 @@
             }
         }
 
-        // Delete user
+        // Delete user (soft delete)
         async function deleteUser(userId) {
             try {
                 // Get the user to be deleted
@@ -434,7 +437,12 @@
                 }
 
                 if (confirm('Bạn có chắc chắn muốn xóa user này?')) {
-                    await deleteDoc(doc(db, 'users', userId));
+                    // Soft delete - mark as deleted instead of removing from database
+                    await updateDoc(doc(db, 'users', userId), {
+                        isDeleted: true,
+                        deletedAt: new Date().toISOString(),
+                        deletedBy: currentUser.email
+                    });
                     loadUserList();
                     alert('Đã xóa user thành công!');
                 }
