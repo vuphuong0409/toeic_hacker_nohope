@@ -237,7 +237,7 @@
         <div class="user-info">
             Welcome, <span id="username">Admin</span>
             <a href="index.html" class="back-btn">← Back to Tests</a>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+            <button class="logout-btn" onclick="window.logout()">Logout</button>
         </div>
         
         <div class="content">
@@ -252,6 +252,10 @@
                         <div class="form-group">
                             <label>Username</label>
                             <input type="text" id="newUsername" placeholder="Enter username">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="newEmail" placeholder="Enter email">
                         </div>
                         <div class="form-group">
                             <label>Password</label>
@@ -275,132 +279,173 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script>
-        // Load users from config.js
+    <script type="module">
+        import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from './firebase-config.js';
+
         let users = [];
-        
-        function loadUsersFromConfig() {
-            // First try to load from localStorage
-            const storedUsers = localStorage.getItem('users');
-            if (storedUsers) {
-                try {
-                    users = JSON.parse(storedUsers);
-                    console.log('Users loaded from localStorage');
-                    return;
-                } catch (e) {
-                    console.error('Error loading users from localStorage:', e);
-                }
-            }
-            
-            // Fallback to config.js
-            if (typeof configData !== 'undefined' && configData.users && Array.isArray(configData.users)) {
-                users = configData.users;
-                // Save to localStorage for future use
-                localStorage.setItem('users', JSON.stringify(users));
-                console.log('Users loaded from config.js and saved to localStorage');
-            }
-        }
-        
+        let currentUser = null;
+
         // Check if user is logged in and is admin
         function checkAuth() {
-            const loggedIn = sessionStorage.getItem('loggedIn');
-            const username = sessionStorage.getItem('username');
-            const userRole = sessionStorage.getItem('userRole');
-            
-            if (!loggedIn || loggedIn !== 'true') {
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    window.location.href = 'login.html';
+                } else {
+                    currentUser = user;
+                    // Check if user is admin by checking Firestore
+                    try {
+                        const userDoc = await getDocs(query(collection(db, 'users'), where('email', '==', user.email)));
+                        if (!userDoc.empty) {
+                            const userData = userDoc.docs[0].data();
+                            if (userData.role !== 'admin') {
+                                alert('Access denied. Admin only.');
+                                window.location.href = 'index.html';
+                            } else {
+                                document.getElementById('username').textContent = userData.username;
+                                loadUserList();
+                            }
+                        } else {
+                            // If user doesn't exist in Firestore, create them as admin (first admin)
+                            await addDoc(collection(db, 'users'), {
+                                username: user.email.split('@')[0], // Use part before @ as username
+                                email: user.email,
+                                role: 'admin',
+                                createdAt: new Date().toISOString()
+                            });
+                            document.getElementById('username').textContent = user.email.split('@')[0];
+                            loadUserList();
+                        }
+                    } catch (error) {
+                        console.error('Error checking user role:', error);
+                        alert('Error checking user permissions');
+                        window.location.href = 'login.html';
+                    }
+                }
+            });
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                await signOut(auth);
                 window.location.href = 'login.html';
-            } else if (userRole !== 'admin') {
-                alert('Access denied. Admin only.');
-                window.location.href = 'index.html';
-            } else {
-                document.getElementById('username').textContent = username;
-                loadUserList();
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out');
             }
         }
-        
-        // Logout function
-        function logout() {
-            sessionStorage.removeItem('loggedIn');
-            sessionStorage.removeItem('username');
-            sessionStorage.removeItem('userRole');
-            window.location.href = 'login.html';
-        }
-        
-        // Load user list for admin
-        function loadUserList() {
+
+        // Load user list from Firestore
+        async function loadUserList() {
             const userList = document.getElementById('userList');
             userList.innerHTML = '';
             
-            users.forEach((user, index) => {
-                const userItem = document.createElement('div');
-                userItem.className = 'user-item';
-                userItem.innerHTML = `
-                    <div class="user-item-info">
-                        <span class="username">${user.username}</span>
-                        <span class="role ${user.role}">${user.role}</span>
-                    </div>
-                    <button class="btn-delete" onclick="deleteUser(${index})">Delete</button>
-                `;
-                userList.appendChild(userItem);
-            });
+            try {
+                const querySnapshot = await getDocs(collection(db, 'users'));
+                users = [];
+                querySnapshot.forEach((doc) => {
+                    users.push({ id: doc.id, ...doc.data() });
+                });
+
+                users.forEach((user) => {
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-item';
+                    userItem.innerHTML = `
+                        <div class="user-item-info">
+                            <span class="username">${user.username}</span>
+                            <span class="role ${user.role}">${user.role}</span>
+                        </div>
+                        <button class="btn-delete" onclick="window.deleteUser('${user.id}')">Delete</button>
+                    `;
+                    userList.appendChild(userItem);
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+                alert('Error loading users');
+            }
         }
-        
+
         // Add new user
-        function addUser() {
+        async function addUser() {
             const username = document.getElementById('newUsername').value.trim();
+            const email = document.getElementById('newEmail').value.trim();
             const password = document.getElementById('newPassword').value.trim();
             const role = document.getElementById('newRole').value;
             
-            if (!username || !password) {
-                alert('Please enter username and password');
+            if (!username || !email || !password) {
+                alert('Please enter username, email and password');
                 return;
             }
-            
-            // Check if username already exists
-            if (users.some(u => u.username === username)) {
-                alert('Username already exists');
-                return;
-            }
-            
-            // Add new user
-            users.push({ username, password, role });
-            
-            // Save to localStorage (auto-update)
-            localStorage.setItem('users', JSON.stringify(users));
-            
-            // Clear form and reload user list
-            document.getElementById('newUsername').value = '';
-            document.getElementById('newPassword').value = '';
-            loadUserList();
-            
-            alert('User added successfully');
-        }
-        
-        // Delete user
-        function deleteUser(index) {
-            const user = users[index];
-            const currentUser = sessionStorage.getItem('username');
-            
-            // Prevent deleting self
-            if (user.username === currentUser) {
-                alert('You cannot delete yourself');
-                return;
-            }
-            
-            if (confirm(`Are you sure you want to delete user "${user.username}"?`)) {
-                users.splice(index, 1);
+
+            try {
+                // Check if username already exists
+                const existingUser = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+                if (!existingUser.empty) {
+                    alert('Username already exists');
+                    return;
+                }
+
+                // Create Firebase Auth user
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 
-                // Save to localStorage (auto-update)
-                localStorage.setItem('users', JSON.stringify(users));
+                // Add user data to Firestore
+                await addDoc(collection(db, 'users'), {
+                    username: username,
+                    email: email,
+                    role: role,
+                    createdAt: new Date().toISOString()
+                });
                 
+                // Clear form and reload user list
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newEmail').value = '';
+                document.getElementById('newPassword').value = '';
                 loadUserList();
-                alert('User deleted successfully');
+                
+                alert('User added successfully');
+            } catch (error) {
+                console.error('Error adding user:', error);
+                if (error.code === 'auth/email-already-in-use') {
+                    alert('Email already exists');
+                } else if (error.code === 'auth/weak-password') {
+                    alert('Password is too weak (minimum 6 characters)');
+                } else {
+                    alert('Error adding user: ' + error.message);
+                }
             }
         }
-        
-        // Load config and check authentication on page load
-        loadUsersFromConfig();
+
+        // Delete user
+        async function deleteUser(userId) {
+            try {
+                const userDoc = await getDocs(query(collection(db, 'users'), where('email', '==', currentUser.email)));
+                if (!userDoc.empty) {
+                    const userData = userDoc.docs[0];
+                    
+                    // Prevent deleting self
+                    if (userData.id === userId) {
+                        alert('You cannot delete yourself');
+                        return;
+                    }
+                }
+
+                if (confirm('Are you sure you want to delete this user?')) {
+                    await deleteDoc(doc(db, 'users', userId));
+                    loadUserList();
+                    alert('User deleted successfully');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Error deleting user');
+            }
+        }
+
+        // Make functions globally accessible
+        window.logout = logout;
+        window.addUser = addUser;
+        window.deleteUser = deleteUser;
+
+        // Check authentication on page load
         checkAuth();
     </script>
 </body>

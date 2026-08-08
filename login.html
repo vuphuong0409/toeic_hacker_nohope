@@ -119,12 +119,12 @@
         <form id="loginForm">
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
             </div>
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
             </div>
             
             <button type="submit" class="login-btn">Login</button>
@@ -139,54 +139,72 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script>
-        // User credentials loaded from config.js
-        let users = [];
-
-        // Load config from config.js file
-        function loadConfigFromFile() {
-            // Check if config was loaded via script tag
-            if (typeof configData !== 'undefined' && configData.users && Array.isArray(configData.users)) {
-                users = configData.users;
-                console.log('Config loaded from config.js');
-            } else {
-                console.log('Could not load config.js, using defaults');
-                users = [
-                    { username: "admin", password: "admin123" },
-                    { username: "user", password: "user123" }
-                ];
-            }
-        }
+    <script type="module">
+        import { auth, db, signInWithEmailAndPassword, onAuthStateChanged, collection, addDoc, getDocs, query, where } from './firebase-config.js';
 
         // Login form handler
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
             
-            // Check credentials
-            const user = users.find(u => u.username === username && u.password === password);
-            
-            if (user) {
-                // Store login state in sessionStorage
-                sessionStorage.setItem('loggedIn', 'true');
-                sessionStorage.setItem('username', username);
-                sessionStorage.setItem('userRole', user.role || 'user');
+            try {
+                // Look up user by username in Firestore
+                const userDoc = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+                
+                if (userDoc.empty) {
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = 'Username not found';
+                    setTimeout(() => {
+                        errorMessage.style.display = 'none';
+                    }, 3000);
+                    return;
+                }
+                
+                const userData = userDoc.docs[0].data();
+                const email = userData.email;
+                
+                // Sign in with Firebase using the email
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                
                 // Redirect to index page
                 window.location.href = 'index.html';
-            } else {
+            } catch (error) {
+                console.error('Login error:', error);
                 errorMessage.style.display = 'block';
+                errorMessage.textContent = getErrorMessage(error.code);
                 setTimeout(() => {
                     errorMessage.style.display = 'none';
                 }, 3000);
             }
         });
 
-        // Load config on page load
-        window.onload = loadConfigFromFile;
+        // Get user-friendly error message
+        function getErrorMessage(errorCode) {
+            switch (errorCode) {
+                case 'auth/user-not-found':
+                    return 'User not found. Please check your username.';
+                case 'auth/wrong-password':
+                    return 'Incorrect password. Please try again.';
+                case 'auth/invalid-email':
+                    return 'Invalid email format.';
+                case 'auth/user-disabled':
+                    return 'This account has been disabled.';
+                case 'auth/too-many-requests':
+                    return 'Too many attempts. Please try again later.';
+                default:
+                    return 'Login failed. Please try again.';
+            }
+        }
+
+        // Check if user is already logged in
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.location.href = 'index.html';
+            }
+        });
     </script>
 </body>
 </html>
