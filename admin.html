@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - User Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .user-info {
+            text-align: right;
+            padding: 15px 40px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .user-info span {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 15px;
+            transition: all 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        
+        .back-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-right: 15px;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        
+        .back-btn:hover {
+            background: #5568d3;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .admin-panel {
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 25px;
+        }
+        
+        .admin-panel h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .user-list {
+            margin-bottom: 20px;
+        }
+        
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .user-item-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-item-info .username {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .user-item-info .role {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .user-item-info .role.admin {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .user-item-info .role.user {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+        
+        .add-user-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .add-user-form h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+        
+        .btn-add {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-add:hover {
+            background: #218838;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            border-top: 1px solid #e9ecef;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 Admin Panel</h1>
+            <p>User Management</p>
+        </div>
+        
+        <div class="user-info">
+            Welcome, <span id="username">Admin</span>
+            <a href="index.html" class="back-btn">← Back to Tests</a>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+        
+        <div class="content">
+            <div class="admin-panel">
+                <h3>👥 User Management</h3>
+                <div class="user-list" id="userList">
+                    <!-- Users will be loaded here -->
+                </div>
+                <div class="add-user-form">
+                    <h4>➕ Add New User</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="newUsername" placeholder="Enter username">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="newPassword" placeholder="Enter password">
+                        </div>
+                        <div class="form-group">
+                            <label>Role</label>
+                            <select id="newRole">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-add" onclick="addUser()">Add User</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            PhuongVu
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // Load users from config.js
+        let users = [];
+        
+        function loadUsersFromConfig() {
+            // First try to load from localStorage
+            const storedUsers = localStorage.getItem('users');
+            if (storedUsers) {
+                try {
+                    users = JSON.parse(storedUsers);
+                    console.log('Users loaded from localStorage');
+                    return;
+                } catch (e) {
+                    console.error('Error loading users from localStorage:', e);
+                }
+            }
+            
+            // Fallback to config.js
+            if (typeof configData !== 'undefined' && configData.users && Array.isArray(configData.users)) {
+                users = configData.users;
+                // Save to localStorage for future use
+                localStorage.setItem('users', JSON.stringify(users));
+                console.log('Users loaded from config.js and saved to localStorage');
+            }
+        }
+        
+        // Check if user is logged in and is admin
+        function checkAuth() {
+            const loggedIn = sessionStorage.getItem('loggedIn');
+            const username = sessionStorage.getItem('username');
+            const userRole = sessionStorage.getItem('userRole');
+            
+            if (!loggedIn || loggedIn !== 'true') {
+                window.location.href = 'login.html';
+            } else if (userRole !== 'admin') {
+                alert('Access denied. Admin only.');
+                window.location.href = 'index.html';
+            } else {
+                document.getElementById('username').textContent = username;
+                loadUserList();
+            }
+        }
+        
+        // Logout function
+        function logout() {
+            sessionStorage.removeItem('loggedIn');
+            sessionStorage.removeItem('username');
+            sessionStorage.removeItem('userRole');
+            window.location.href = 'login.html';
+        }
+        
+        // Load user list for admin
+        function loadUserList() {
+            const userList = document.getElementById('userList');
+            userList.innerHTML = '';
+            
+            users.forEach((user, index) => {
+                const userItem = document.createElement('div');
+                userItem.className = 'user-item';
+                userItem.innerHTML = `
+                    <div class="user-item-info">
+                        <span class="username">${user.username}</span>
+                        <span class="role ${user.role}">${user.role}</span>
+                    </div>
+                    <button class="btn-delete" onclick="deleteUser(${index})">Delete</button>
+                `;
+                userList.appendChild(userItem);
+            });
+        }
+        
+        // Add new user
+        function addUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const role = document.getElementById('newRole').value;
+            
+            if (!username || !password) {
+                alert('Please enter username and password');
+                return;
+            }
+            
+            // Check if username already exists
+            if (users.some(u => u.username === username)) {
+                alert('Username already exists');
+                return;
+            }
+            
+            // Add new user
+            users.push({ username, password, role });
+            
+            // Save to localStorage (auto-update)
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // Clear form and reload user list
+            document.getElementById('newUsername').value = '';
+            document.getElementById('newPassword').value = '';
+            loadUserList();
+            
+            alert('User added successfully');
+        }
+        
+        // Delete user
+        function deleteUser(index) {
+            const user = users[index];
+            const currentUser = sessionStorage.getItem('username');
+            
+            // Prevent deleting self
+            if (user.username === currentUser) {
+                alert('You cannot delete yourself');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to delete user "${user.username}"?`)) {
+                users.splice(index, 1);
+                
+                // Save to localStorage (auto-update)
+                localStorage.setItem('users', JSON.stringify(users));
+                
+                loadUserList();
+                alert('User deleted successfully');
+            }
+        }
+        
+        // Load config and check authentication on page load
+        loadUsersFromConfig();
+        checkAuth();
+    </script>
+</body>
+</html>
