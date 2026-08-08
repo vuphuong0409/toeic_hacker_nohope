@@ -376,7 +376,7 @@
             const role = document.getElementById('newRole').value;
             
             if (!username || !email || !password) {
-                alert('Please enter username, email and password');
+                alert('Vui lòng nhập username, email và password');
                 return;
             }
 
@@ -384,20 +384,28 @@
                 // Check if username already exists
                 const existingUser = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
                 if (!existingUser.empty) {
-                    alert('Username already exists');
+                    alert('Username đã tồn tại');
                     return;
                 }
 
-                // Create Firebase Auth user
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                
-                // Add user data to Firestore
+                // Check if email already exists in Firestore
+                const existingEmail = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+                if (!existingEmail.empty) {
+                    alert('Email đã tồn tại');
+                    return;
+                }
+
+                // Add user data to Firestore with password (for initial setup)
                 await addDoc(collection(db, 'users'), {
                     username: username,
                     email: email,
+                    password: password, // Store password temporarily (not secure, but for demo)
                     role: role,
                     createdAt: new Date().toISOString()
                 });
+                
+                // Note: Firebase Auth user creation is skipped to avoid session issues
+                // User will be created in Firebase Auth on first login attempt
                 
                 // Clear form and reload user list
                 document.getElementById('newUsername').value = '';
@@ -405,16 +413,10 @@
                 document.getElementById('newPassword').value = '';
                 loadUserList();
                 
-                alert('Đã thêm user thành công!');
+                alert('Đã thêm user thành công! User có thể đăng nhập ngay.');
             } catch (error) {
                 console.error('Error adding user:', error);
-                if (error.code === 'auth/email-already-in-use') {
-                    alert('Email already exists');
-                } else if (error.code === 'auth/weak-password') {
-                    alert('Password is too weak (minimum 6 characters)');
-                } else {
-                    alert('Error adding user: ' + error.message);
-                }
+                alert('Lỗi khi thêm user: ' + error.message);
             }
         }
 

@@ -140,7 +140,7 @@
     </div>
 
     <script type="module">
-        import { auth, db, signInWithEmailAndPassword, onAuthStateChanged, collection, addDoc, getDocs, query, where } from './firebase-config.js';
+        import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, collection, addDoc, getDocs, query, where } from './firebase-config.js';
 
         // Login form handler
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
@@ -177,15 +177,31 @@
                 
                 const email = userData.email;
                 
-                // Sign in with Firebase using the email
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                
-                // Redirect to index page
-                window.location.href = 'index.html';
+                // Try to sign in with Firebase using the email
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    // Redirect to index page
+                    window.location.href = 'index.html';
+                } catch (signInError) {
+                    // If user doesn't exist in Firebase Auth, create them
+                    if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
+                        // Check if password matches the one stored in Firestore (for initial setup)
+                        if (userData.password === password) {
+                            // Create Firebase Auth user
+                            await createUserWithEmailAndPassword(auth, email, password);
+                            // Redirect to index page
+                            window.location.href = 'index.html';
+                        } else {
+                            throw new Error('wrong-password');
+                        }
+                    } else {
+                        throw signInError;
+                    }
+                }
             } catch (error) {
                 console.error('Login error:', error);
                 errorMessage.style.display = 'block';
-                errorMessage.textContent = getErrorMessage(error.code);
+                errorMessage.textContent = getErrorMessage(error.code || error.message);
                 setTimeout(() => {
                     errorMessage.style.display = 'none';
                 }, 3000);
