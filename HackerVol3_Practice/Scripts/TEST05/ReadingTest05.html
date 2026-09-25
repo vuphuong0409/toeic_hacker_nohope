@@ -2304,7 +2304,6 @@
                 feedbackDiv.classList.remove('incorrect');
                 feedbackDiv.classList.add('correct');
                 questionState.set(questionId, true);
-                lockQuestion(questionId);
             } else {
                 optionElement.classList.add('selected-incorrect');
                 feedbackDiv.textContent = '✗ Incorrect. Try again!';
