@@ -1138,10 +1138,41 @@
 
             var escapedKeyword = trimmedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             var exactMatch = new RegExp('(^|[^A-Za-z0-9])(' + escapedKeyword + ')(?=$|[^A-Za-z0-9])', 'i').exec(answerText);
-            var keywordWords = new Set((trimmedKeyword.match(/[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g) || []).map(function(word) {
-                return word.toLowerCase();
-            }));
-            if (!exactMatch && keywordWords.size === 0) return;
+            var keywordWords = trimmedKeyword.match(/[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g) || [];
+            var answerWords = [];
+            var wordPattern = /[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g;
+            var wordMatch;
+            while ((wordMatch = wordPattern.exec(answerText)) !== null) {
+                answerWords.push({
+                    text: wordMatch[0].toLowerCase(),
+                    start: wordMatch.index,
+                    end: wordPattern.lastIndex
+                });
+            }
+
+            var phraseMatch = null;
+            if (keywordWords.length > 0) {
+                for (var startIndex = 0; startIndex < answerWords.length && !phraseMatch; startIndex++) {
+                    if (answerWords[startIndex].text !== keywordWords[0].toLowerCase()) continue;
+
+                    var keywordIndex = 1;
+                    var endIndex = startIndex;
+                    while (keywordIndex < keywordWords.length && endIndex + 1 < answerWords.length) {
+                        endIndex++;
+                        if (answerWords[endIndex].text === keywordWords[keywordIndex].toLowerCase()) {
+                            keywordIndex++;
+                        }
+                    }
+                    if (keywordIndex === keywordWords.length) {
+                        phraseMatch = {
+                            start: answerWords[startIndex].start,
+                            end: answerWords[endIndex].end
+                        };
+                    }
+                }
+            }
+
+            if (!exactMatch && !phraseMatch) return;
 
             function appendText(text, isKeyword) {
                 if (!text) return;
@@ -1167,16 +1198,9 @@
                 return;
             }
 
-            var wordPattern = /[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g;
-            var lastIndex = 0;
-            var wordMatch;
-            while ((wordMatch = wordPattern.exec(answerText)) !== null) {
-                appendText(answerText.slice(lastIndex, wordMatch.index), false);
-                var normalizedWord = wordMatch[0].toLowerCase();
-                appendText(wordMatch[0], keywordWords.has(normalizedWord));
-                lastIndex = wordPattern.lastIndex;
-            }
-            appendText(answerText.slice(lastIndex), false);
+            appendText(answerText.slice(0, phraseMatch.start), false);
+            appendText(answerText.slice(phraseMatch.start, phraseMatch.end), true);
+            appendText(answerText.slice(phraseMatch.end), false);
         }
 
         function selectAnswer(optionElement, questionId, correctAnswer, keyword) {
@@ -1230,6 +1254,9 @@
             correctCount = 0;
             incorrectCount = 0;
             questionState.clear();
+            document.querySelectorAll('.option label strong').forEach(function(highlight) {
+                highlight.replaceWith(document.createTextNode(highlight.textContent));
+            });
             
             document.querySelectorAll('.option').forEach(opt => {
                 opt.classList.remove('selected-correct', 'selected-incorrect');
