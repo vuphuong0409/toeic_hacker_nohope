@@ -25,6 +25,9 @@
         .option:hover {
             background: #f0f0f0;
         }
+        .option label {
+            cursor: pointer;
+        }
         .feedback {
             margin-top: 15px;
             padding: 15px;
@@ -39,13 +42,6 @@
             color: #155724;
             border: 2px solid #28a745;
         }
-        .keyword-display {
-            font-size: 0.9em;
-            margin-top: 8px;
-            display: block;
-            color: #0d5c2e;
-            font-weight: 600;
-        }
     </style>
 </head>
 <body>
@@ -53,19 +49,33 @@
         <h2>Test Keyword Feature</h2>
         <p>Click on option (C) to test the keyword display:</p>
         
-        <div class="option" onclick="testAnswer('C')">
-            <input type="radio" name="test"> (C) The man's kneeling down.
+        <div class="option" onclick="testAnswer(this)">
+            <input type="radio" name="test"> <label>(C) The man's kneeling down.</label>
         </div>
         
         <div id="feedback" class="feedback"></div>
     </div>
 
     <script>
-        function testAnswer(answer) {
+        function testAnswer(option) {
             var feedback = document.getElementById('feedback');
             var keyword = 'kneeling';
-            
-            feedback.innerHTML = '✓ Correct!<span class="keyword-display">💡 Key word: <strong>' + keyword + '</strong></span>';
+            var label = option.querySelector('label');
+            var answer = label.textContent;
+            var start = answer.toLowerCase().indexOf(keyword.toLowerCase());
+
+            if (start !== -1) {
+                var end = start + keyword.length;
+                var highlighted = document.createElement('strong');
+                highlighted.style.color = '#dc3545';
+                highlighted.textContent = answer.slice(start, end);
+                label.textContent = '';
+                label.appendChild(document.createTextNode(answer.slice(0, start)));
+                label.appendChild(highlighted);
+                label.appendChild(document.createTextNode(answer.slice(end)));
+            }
+
+            feedback.textContent = '✓ Correct!';
             feedback.classList.add('show', 'correct');
         }
     </script>

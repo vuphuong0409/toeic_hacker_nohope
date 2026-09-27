@@ -2253,6 +2253,64 @@
             });
         }
 
+        function highlightKeywordInAnswer(optionElement, keyword) {
+            if (!keyword) return;
+
+            var label = optionElement.querySelector('label');
+            if (!label) return;
+
+            var labelText = label.textContent || '';
+            var prefixMatch = labelText.match(/^(\([A-Z]\)\s*)/);
+            if (!prefixMatch) return;
+
+            var prefix = prefixMatch[0];
+            var answerText = labelText.slice(prefix.length);
+            var trimmedKeyword = keyword.trim();
+            if (!trimmedKeyword) return;
+
+            var escapedKeyword = trimmedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            var exactMatch = new RegExp('(^|[^A-Za-z0-9])(' + escapedKeyword + ')(?=$|[^A-Za-z0-9])', 'i').exec(answerText);
+            var keywordWords = new Set((trimmedKeyword.match(/[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g) || []).map(function(word) {
+                return word.toLowerCase();
+            }));
+            if (!exactMatch && keywordWords.size === 0) return;
+
+            function appendText(text, isKeyword) {
+                if (!text) return;
+                if (isKeyword) {
+                    var highlighted = document.createElement('strong');
+                    highlighted.style.color = '#dc3545';
+                    highlighted.textContent = text;
+                    label.appendChild(highlighted);
+                } else {
+                    label.appendChild(document.createTextNode(text));
+                }
+            }
+
+            label.textContent = '';
+            label.appendChild(document.createTextNode(prefix));
+
+            if (exactMatch) {
+                var matchStart = exactMatch.index + exactMatch[1].length;
+                var matchEnd = matchStart + exactMatch[2].length;
+                appendText(answerText.slice(0, matchStart), false);
+                appendText(answerText.slice(matchStart, matchEnd), true);
+                appendText(answerText.slice(matchEnd), false);
+                return;
+            }
+
+            var wordPattern = /[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*/g;
+            var lastIndex = 0;
+            var wordMatch;
+            while ((wordMatch = wordPattern.exec(answerText)) !== null) {
+                appendText(answerText.slice(lastIndex, wordMatch.index), false);
+                var normalizedWord = wordMatch[0].toLowerCase();
+                appendText(wordMatch[0], keywordWords.has(normalizedWord));
+                lastIndex = wordPattern.lastIndex;
+            }
+            appendText(answerText.slice(lastIndex), false);
+        }
+
         function selectAnswer(optionElement, questionId, correctAnswer, keyword) {
             var input = optionElement.querySelector('input');
             
@@ -2270,11 +2328,10 @@
             var feedbackDiv = document.getElementById('feedback-' + questionId);
             
             if (selectedValue === correctAnswer) {
+                highlightKeywordInAnswer(optionElement, keyword);
                 optionElement.classList.add('selected-correct');
                 var feedbackText = '✓ Correct!';
-                if (keyword) {
-                    feedbackText += '<br><span style="font-size: 0.9em; margin-top: 8px; display: block; color: #0d5c2e; font-weight: 600;">💡 Key word: <strong>' + keyword + '</strong></span>';
-                }
+
                 feedbackDiv.innerHTML = feedbackText;
                 feedbackDiv.classList.remove('incorrect');
                 feedbackDiv.classList.add('correct');
